@@ -640,39 +640,58 @@ function PvEScreen({ hero, onStart, completedQuests }: any) {
                 <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                     <Map className="w-5 h-5 text-amber-500" />
                 </div>
-            </div>
+            </div>            {/* Pannable Map Container */}
+            <div className="relative aspect-square w-full rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-black group">
+                <div className="absolute inset-0 overflow-auto no-scrollbar cursor-grab active:cursor-grabbing" id="map-scroller">
+                    <div className="relative w-[200%] h-[200%]">
+                        <img 
+                            src={getAssetPath("assets/world_map.png")} 
+                            className="w-full h-full object-cover opacity-80" 
+                            onLoad={() => {
+                                const scroller = document.getElementById('map-scroller');
+                                if (scroller) {
+                                    scroller.scrollTop = scroller.scrollHeight; // Focus bottom
+                                    scroller.scrollLeft = scroller.scrollWidth / 4; // Center horizontally
+                                }
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
+                        
+                        {MAP_LOCATIONS.map(loc => {
+                            const quests = QUEST_DATA.filter(q => q.locId === loc.id);
+                            const allDone = quests.length > 0 && quests.every(q => {
+                                const last = completedQuests[q.id] || 0;
+                                return Date.now() - last < q.cooldown;
+                            });
 
-            {/* The Map */}
-            <div className="relative aspect-square w-full rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-slate-900 group">
-                <img src={getAssetPath("assets/world_map.png")} className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-[10000ms]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
-                
-                {MAP_LOCATIONS.map(loc => {
-                    const quests = QUEST_DATA.filter(q => q.locId === loc.id);
-                    const allDone = quests.length > 0 && quests.every(q => {
-                        const last = completedQuests[q.id] || 0;
-                        return Date.now() - last < q.cooldown;
-                    });
-
-                    return (
-                        <button 
-                            key={loc.id}
-                            disabled={loc.locked}
-                            onClick={() => setSelectedLoc(loc)}
-                            className={`absolute z-20 transition-all ${loc.locked ? 'cursor-not-allowed grayscale' : 'hover:scale-125'}`}
-                            style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
-                        >
-                            <div className={`relative flex items-center justify-center ${allDone ? 'opacity-50' : !loc.locked && 'animate-bounce'}`}>
-                                <div className={`w-8 h-8 rounded-full border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.5)] flex items-center justify-center ${loc.locked ? 'bg-slate-800' : allDone ? 'bg-slate-600' : 'bg-amber-500'}`}>
-                                    {loc.locked ? <ShieldAlert className="w-4 h-4 text-slate-500" /> : <loc.icon className="w-4 h-4 text-black" />}
-                                </div>
-                                <div className={`absolute top-10 whitespace-nowrap bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border ${loc.locked ? 'border-red-500/20' : 'border-white/10'}`}>
-                                    <span className={`text-[10px] font-black uppercase ${loc.locked ? 'text-slate-500' : 'text-white'}`}>{loc.name} {loc.locked && '(Locked)'}</span>
-                                </div>
-                            </div>
-                        </button>
-                    );
-                })}
+                            return (
+                                <button 
+                                    key={loc.id}
+                                    disabled={loc.locked}
+                                    onClick={() => setSelectedLoc(loc)}
+                                    className={`absolute z-20 transition-all ${loc.locked ? 'grayscale opacity-60' : 'hover:scale-110'}`}
+                                    style={{ left: `${loc.x}%`, top: `${loc.y}%`, transform: 'translate(-50%, -50%)' }}
+                                >
+                                    <div className={`relative flex flex-col items-center justify-center`}>
+                                        <div className={`w-8 h-8 rounded-full border-2 border-white/40 shadow-xl flex items-center justify-center ${loc.locked ? 'bg-slate-900' : allDone ? 'bg-slate-700' : 'bg-amber-500 animate-pulse'}`}>
+                                            {loc.locked ? <ShieldAlert className="w-3 h-3 text-slate-500" /> : <loc.icon className="w-4 h-4 text-black" />}
+                                        </div>
+                                        <div className={`mt-2 px-2 py-0.5 rounded-md border backdrop-blur-md whitespace-nowrap ${loc.locked ? 'bg-black/60 border-white/5' : 'bg-amber-500/90 border-amber-400'}`}>
+                                            <span className={`text-[7px] font-black uppercase tracking-tighter ${loc.locked ? 'text-slate-500' : 'text-black'}`}>{loc.name}</span>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                {/* Visual Indicator for Panning */}
+                <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 pointer-events-none">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center">
+                        <Map className="w-3 h-3 mr-2" />
+                        Drag to Explore
+                    </span>
+                </div>
             </div>
 
             {/* Location Detail / Quests */}
