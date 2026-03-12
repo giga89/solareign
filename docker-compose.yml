@@ -1,0 +1,60 @@
+services:
+  solana-node:
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - "8899:8899"
+      - "8900:8900"
+    tty: true
+    stdin_open: true
+    container_name: solareign-node
+
+  frontend:
+    build: .
+    working_dir: /app/frontend
+    volumes:
+      - .:/app
+    ports:
+      - "3004:3000"
+    command: sh -c "npm install && npm run dev"
+    container_name: solareign-frontend
+    depends_on:
+      - solana-node
+
+  loki:
+    image: grafana/loki:latest
+    container_name: solareign-loki
+    ports:
+      - "3101:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: always
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: solareign-promtail
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    restart: always
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: solareign-grafana
+    ports:
+      - "3006:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - loki
+    restart: always
+
+volumes:
+  grafana_data:
+    driver: local
