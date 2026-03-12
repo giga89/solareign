@@ -302,7 +302,7 @@ export default function Home() {
       <div className="p-6 pb-36">
         {!combat ? (
           <>
-            {tab === "hero" && <HeroScreen hero={hero} onMint={mintHero} isMinting={isMinting} onUpgrade={s => setHero(h => {
+            {tab === "hero" && <HeroScreen hero={hero} onMint={mintHero} isMinting={isMinting} onUpgrade={(s: string) => setHero(h => {
                 const cost = Math.floor(h!.stats[s as keyof HeroStats] * 1.5); // Dynamic cost
                 if (!h || h.points <= 0 || h.aurum < cost) return h;
                 return { ...h, points: h.points - 1, aurum: h.aurum - cost, stats: { ...h.stats, [s]: h.stats[s as keyof HeroStats] + 1 } }
