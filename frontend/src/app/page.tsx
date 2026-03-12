@@ -171,6 +171,29 @@ const MOCK_LEADERBOARD = [
   { name: "GhostMaker", level: 8, path: "Dark", archetype: "Necrolord" },
 ];
 
+const MAP_LOCATIONS = [
+  // REGION 1: SOUTH (Active)
+  { id: "lighthouse", name: "Beacon Point", x: 45, y: 88, icon: Map, region: 1 },
+  { id: "willows_end", name: "Willow's End", x: 50, y: 72, icon: Map, region: 1 },
+  { id: "isle_dawn", name: "Isle of Dawn", x: 18, y: 85, icon: Map, region: 1 },
+  { id: "ghost_ship", name: "The Sea King (Ship)", x: 25, y: 78, icon: Map, region: 1 },
+
+  // REGION 2-4: LOCKED
+  { id: "oakhaven", name: "Oakhaven (Capital)", x: 30, y: 50, icon: Map, region: 2, locked: true },
+  { id: "riverdale", name: "Riverdale", x: 65, y: 35, icon: Map, region: 3, locked: true },
+  { id: "sunlit_coast", name: "Sunlit Coast", x: 18, y: 32, icon: Map, region: 2, locked: true },
+  { id: "verdant_meadows", name: "Verdant Meadows", x: 62, y: 58, icon: Map, region: 4, locked: true },
+];
+
+const QUEST_DATA = [
+  // SOUTH - Region 1
+  { id: "q_light", locId: "lighthouse", name: "Ghost of the Lantern", tier: 1, enemy: "Wraith", cooldown: 24*60*60*1000, type: "Daily" },
+  { id: "q_willow_1", locId: "willows_end", name: "Village Pests", tier: 1, enemy: "Skeleton", cooldown: 4*60*60*1000, type: "Resets 4h" },
+  { id: "q_willow_2", locId: "willows_end", name: "The Broken Mill", tier: 1, enemy: "Ogre", cooldown: 12*60*60*1000, type: "Resets 12h" },
+  { id: "q_isle_1", locId: "isle_dawn", name: "Cursed Tides", tier: 2, enemy: "Skeleton", cooldown: 24*60*60*1000, type: "Daily" },
+  { id: "q_boat_1", locId: "ghost_ship", name: "Boarding Party", tier: 2, enemy: "Wraith", cooldown: 8*60*60*1000, type: "Resets 8h" },
+];
+
 // --- Helpers ---
 const getAssetPath = (path: string) => {
     const base = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -188,6 +211,8 @@ export default function Home() {
   const [hero, setHero] = useState<Hero | null>(null);
   const [isMinting, setIsMinting] = useState(false);
   const [combat, setCombat] = useState<CombatState | null>(null);
+  const [activeQuestId, setActiveQuestId] = useState<string | null>(null);
+  const [completedQuests, setCompletedQuests] = useState<Record<string, number>>({});
   const [tutorialStep, setTutorialStep] = useState(0);
 
   useEffect(() => {
@@ -237,15 +262,25 @@ export default function Home() {
     }, 1500);
   };
 
-  const startCombat = (tier: number) => {
+  const startCombat = (tier: number, questId: string) => {
     if (!hero || hero.energy < 20) return;
     
-    const pool = [
-      { name: "Skull Guard", img: "skeleton", hp: 150, atk: 18 },
-      { name: "Blood Ogre", img: "ogre", hp: 450, atk: 45 },
-      { name: "Wraith Shadow", img: "wraith", hp: 200, atk: 60 },
+    // Check cooldown
+    const lastDone = completedQuests[questId] || 0;
+    const quest = QUEST_DATA.find(q => q.id === questId);
+    if (quest && Date.now() - lastDone < quest.cooldown) {
+        alert("This quest is currently on cooldown!");
+        return;
+    }
+
+    setActiveQuestId(questId);
+    setHero({ ...hero, energy: hero.energy - 20 });
+    const bases = [
+      { name: "Skeleton", hp: 100, atk: 15, img: "skeleton" },
+      { name: "Ogre", hp: 200, atk: 25, img: "ogre" },
+      { name: "Wraith", hp: 150, atk: 20, img: "wraith" }
     ];
-    const base = pool[Math.min(tier-1, 2)];
+    const base = bases.find(b => b.name === (quest?.enemy || "Skeleton")) || bases[0];
     const enemyAtkPattern = Array(5).fill(null).map(() => BODY_PARTS[Math.floor(Math.random() * 5)]);
     const enemyDefPattern = Array(5).fill(null).map(() => BODY_PARTS[Math.floor(Math.random() * 5)]);
 
@@ -257,7 +292,6 @@ export default function Home() {
       attackPattern: enemyAtkPattern, defensePattern: enemyDefPattern
     };
 
-    setHero(h => h ? {...h, energy: h.energy - 20} : null);
     
     setCombat({
       enemy,
@@ -344,24 +378,29 @@ export default function Home() {
 
   const endCombat = () => {
     if (!combat || !hero) return;
-    if (combat.winner === "hero") {
-        const xp = 40 + (combat.enemy.maxHp * 0.05); // Reduced from 150
-        const gold = 20 + (combat.enemy.attack * 0.2); // Reduced from 75
-        setHero(h => {
-            if (!h) return null;
-            let nxp = h.xp + xp;
-            let nlvl = h.level;
-            let npts = h.points;
-            const xpNeeded = h.level * 150; // Increased from level * 100
-            if (nxp >= xpNeeded) { 
-                nxp -= xpNeeded; 
-                nlvl++; 
-                npts += 2; // Reduced from 5
-            }
-            return { ...h, xp: nxp, aurum: h.aurum + gold, level: nlvl, points: npts };
-        });
-    }
-    setCombat(null);
+      if (combat.winner === "hero") {
+        const xpGain = 20 * (combat.enemy.maxHp / 100);
+        const aurumGain = 50 * (combat.enemy.maxHp / 100);
+        
+        let newXp = hero.xp + xpGain;
+        let newLevel = hero.level;
+        let newPoints = hero.points;
+        
+        if (newXp >= hero.level * 100) {
+          newXp -= hero.level * 100;
+          newLevel++;
+          newPoints += 2; // Level up reward decreased
+        }
+
+        // Mark quest as completed
+        if (activeQuestId) {
+            setCompletedQuests(prev => ({ ...prev, [activeQuestId]: Date.now() }));
+        }
+
+        setHero({ ...hero, xp: newXp, level: newLevel, aurum: hero.aurum + aurumGain, points: newPoints });
+      }
+      setCombat(null);
+      setActiveQuestId(null);
   };
 
   if (!connected && !isGuest) return <LandingPage onGuest={() => setIsGuest(true)} />;
@@ -374,9 +413,10 @@ export default function Home() {
       <div className="p-6 pb-36">
         {!combat ? (
           <>
-            {tab === "hero" && <HeroScreen hero={hero} onMint={mintHero} isMinting={isMinting} onUpgrade={(s: string) => setHero(h => {
-                const cost = Math.floor(h!.stats[s as keyof HeroStats] * 1.5); // Dynamic cost
-                if (!h || h.points <= 0 || h.aurum < cost) return h;
+             {tab === "hero" && <HeroScreen hero={hero} onMint={mintHero} isMinting={isMinting} onUpgrade={(s: string) => setHero(h => {
+                if (!h) return null;
+                const cost = Math.floor(h.stats[s as keyof HeroStats] * 1.5); // Dynamic cost
+                if (h.points <= 0 || h.aurum < cost) return h;
                 return { ...h, points: h.points - 1, aurum: h.aurum - cost, stats: { ...h.stats, [s]: h.stats[s as keyof HeroStats] + 1 } }
             })} onTactic={(r: number, t: "atk" | "def", z: BodyPart) => setHero(h => {
                 if (!h) return null;
@@ -385,7 +425,7 @@ export default function Home() {
                 if (t === "atk") nAtk[r] = z; else nDef[r] = z;
                 return { ...h, attackPattern: nAtk, defensePattern: nDef };
             })} />}
-            {tab === "pve" && <PvEScreen hero={hero} onStart={startCombat} />}
+            {tab === "pve" && <PvEScreen hero={hero} onStart={startCombat} completedQuests={completedQuests} />}
             {tab === "rank" && <LeaderboardScreen currentHero={hero} />}
           </>
         ) : (
@@ -585,16 +625,105 @@ function StatCard({ label, val, onUp, available }: any) {
     );
 }
 
-function PvEScreen({ hero, onStart }: any) {
+function PvEScreen({ hero, onStart, completedQuests }: any) {
+    const [selectedLoc, setSelectedLoc] = useState<any>(null);
+
     if (!hero) return null;
+
     return (
-        <div className="space-y-8 py-10">
-            <h2 className="text-4xl font-black italic tracking-tighter text-left">THE WILDLANDS</h2>
-            <div className="grid grid-cols-1 gap-6">
-                <SectorCard tier={1} name="Bone Crypt" enemy="Skeleton" onStart={() => onStart(1)} color="bg-slate-900" active={hero.energy >= 20} />
-                <SectorCard tier={2} name="Ogre Pass" enemy="Ogre" onStart={() => onStart(2)} color="bg-orange-950" active={hero.energy >= 20} />
-                <SectorCard tier={3} name="Void Citadel" enemy="Wraith" onStart={() => onStart(3)} color="bg-purple-950" active={hero.energy >= 20} />
+        <div className="space-y-6 pt-4">
+            <div className="flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-6 rounded-3xl border border-white/5 mx-2">
+                <div>
+                  <h2 className="text-2xl font-black italic tracking-tighter">KINGDOM OF SOLAR</h2>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Explore and Conquer</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <Map className="w-5 h-5 text-amber-500" />
+                </div>
             </div>
+
+            {/* The Map */}
+            <div className="relative aspect-square w-full rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-slate-900 group">
+                <img src={getAssetPath("assets/world_map.png")} className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-[10000ms]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+                
+                {MAP_LOCATIONS.map(loc => {
+                    const quests = QUEST_DATA.filter(q => q.locId === loc.id);
+                    const allDone = quests.length > 0 && quests.every(q => {
+                        const last = completedQuests[q.id] || 0;
+                        return Date.now() - last < q.cooldown;
+                    });
+
+                    return (
+                        <button 
+                            key={loc.id}
+                            disabled={loc.locked}
+                            onClick={() => setSelectedLoc(loc)}
+                            className={`absolute z-20 transition-all ${loc.locked ? 'cursor-not-allowed grayscale' : 'hover:scale-125'}`}
+                            style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
+                        >
+                            <div className={`relative flex items-center justify-center ${allDone ? 'opacity-50' : !loc.locked && 'animate-bounce'}`}>
+                                <div className={`w-8 h-8 rounded-full border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.5)] flex items-center justify-center ${loc.locked ? 'bg-slate-800' : allDone ? 'bg-slate-600' : 'bg-amber-500'}`}>
+                                    {loc.locked ? <ShieldAlert className="w-4 h-4 text-slate-500" /> : <loc.icon className="w-4 h-4 text-black" />}
+                                </div>
+                                <div className={`absolute top-10 whitespace-nowrap bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border ${loc.locked ? 'border-red-500/20' : 'border-white/10'}`}>
+                                    <span className={`text-[10px] font-black uppercase ${loc.locked ? 'text-slate-500' : 'text-white'}`}>{loc.name} {loc.locked && '(Locked)'}</span>
+                                </div>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Location Detail / Quests */}
+            {selectedLoc && (
+                <div className="fixed inset-0 z-[150] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 space-y-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-8 opacity-5">
+                            <Map className="w-40 h-40" />
+                        </div>
+                        
+                        <div className="flex justify-between items-start relative z-10">
+                            <div>
+                                <h3 className="text-4xl font-black italic tracking-tighter uppercase">{selectedLoc.name}</h3>
+                                <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-1">Available Missions</p>
+                            </div>
+                            <button onClick={() => setSelectedLoc(null)} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-500 hover:text-white">✕</button>
+                        </div>
+
+                        <div className="space-y-4 relative z-10">
+                            {QUEST_DATA.filter(q => q.locId === selectedLoc.id).map(q => {
+                                const lastDone = completedQuests[q.id] || 0;
+                                const onCooldown = Date.now() - lastDone < q.cooldown;
+                                const timeRemaining = q.cooldown - (Date.now() - lastDone);
+                                const hRemaining = Math.ceil(timeRemaining / (1000*60*60));
+                                
+                                return (
+                                    <div key={q.id} className={`p-6 rounded-3xl border transition-all ${onCooldown ? 'bg-slate-950 border-white/5 opacity-60' : 'bg-slate-800/50 border-white/10 hover:border-amber-500'}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{q.type} • TIER {q.tier}</span>
+                                                <h4 className="text-lg font-black italic text-white leading-tight mt-1">{q.name}</h4>
+                                            </div>
+                                            <div className="bg-amber-500/10 rounded-lg px-2 py-1 border border-amber-500/20">
+                                                <span className="text-[10px] font-black text-amber-500">{q.enemy}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <button 
+                                            disabled={onCooldown || hero.energy < 20}
+                                            onClick={() => onStart(q.tier, q.id)}
+                                            className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${onCooldown ? 'bg-slate-900 text-slate-600' : 'bg-white text-black hover:scale-105 active:scale-95 shadow-xl'}`}
+                                        >
+                                            {onCooldown ? `Cooldown (${hRemaining}h)` : hero.energy < 20 ? "Low Energy" : "Begin Quest (20E)"}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
