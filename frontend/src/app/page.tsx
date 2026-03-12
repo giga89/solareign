@@ -687,15 +687,35 @@ function PvEScreen({ hero, onStart, completedQuests }: any) {
                                     key={loc.id}
                                     disabled={loc.locked}
                                     onClick={() => setSelectedLoc(loc)}
-                                    className={`absolute z-20 transition-all ${loc.locked ? 'grayscale opacity-60' : 'hover:scale-110'}`}
+                                    className={`absolute z-20 transition-all ${loc.locked ? 'grayscale opacity-40' : 'hover:scale-110'}`}
                                     style={{ left: `${loc.x}%`, top: `${loc.y}%`, transform: 'translate(-50%, -50%)' }}
                                 >
-                                    <div className={`relative flex flex-col items-center justify-center`}>
-                                        <div className={`w-8 h-8 rounded-full border-2 border-white/40 shadow-xl flex items-center justify-center ${loc.locked ? 'bg-slate-900' : allDone ? 'bg-slate-700' : 'bg-amber-500 animate-pulse'}`}>
-                                            {loc.locked ? <ShieldAlert className="w-3 h-3 text-slate-500" /> : <loc.icon className="w-4 h-4 text-black" />}
+                                    <div className="relative flex flex-col items-center group/marker">
+                                        {/* Minimalist Ring Marker */}
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                            loc.locked 
+                                            ? 'border-slate-700 bg-slate-900/40' 
+                                            : allDone 
+                                                ? 'border-slate-500 bg-slate-800/40' 
+                                                : 'border-amber-500 bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                                        }`}>
+                                            {!loc.locked && !allDone && (
+                                                <div className="absolute inset-0 rounded-full border border-amber-500 animate-ping opacity-40" />
+                                            )}
+                                            <div className={`w-1.5 h-1.5 rounded-full ${loc.locked ? 'bg-slate-700' : allDone ? 'bg-slate-500' : 'bg-amber-500'}`} />
                                         </div>
-                                        <div className={`mt-2 px-2 py-0.5 rounded-md border backdrop-blur-md whitespace-nowrap ${loc.locked ? 'bg-black/60 border-white/5' : 'bg-amber-500/90 border-amber-400'}`}>
-                                            <span className={`text-[7px] font-black uppercase tracking-tighter ${loc.locked ? 'text-slate-500' : 'text-black'}`}>{loc.name}</span>
+                                        
+                                        {/* Subtle Label */}
+                                        <div className={`mt-1.5 px-2 py-0.5 rounded-full border backdrop-blur-sm transition-all ${
+                                            loc.locked 
+                                            ? 'bg-black/20 border-white/5 opacity-40' 
+                                            : 'bg-black/60 border-white/10 group-hover/marker:bg-amber-500 group-hover/marker:border-amber-400'
+                                        }`}>
+                                            <span className={`text-[6px] font-black uppercase tracking-tighter block ${
+                                                loc.locked ? 'text-slate-600' : 'text-slate-300 group-hover/marker:text-black'
+                                            }`}>
+                                                {loc.name}
+                                            </span>
                                         </div>
                                     </div>
                                 </button>
