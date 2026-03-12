@@ -77,6 +77,68 @@ interface CombatState {
   stats: CombatStats;
 }
 
+function TutorialOverlay({ step, onNext, hero }: any) {
+    const steps = [
+        {
+            title: "Welcome, Seeker",
+            desc: "You have entered the realm of Solareign. To begin your journey, you must first manifest a Hero.",
+            target: "mint-button"
+        },
+        {
+            title: "The 5 Stats",
+            desc: "Strength, Skill, Agility, Constitution, and Luck. Each Hero has a bias based on their Archetype. Upgrade them using Aurum!",
+            target: "stats-view"
+        },
+        {
+            title: "Tactical Combat",
+            desc: "This isn't button-mashing. You must pre-configure 5 rounds of Attack and Defense zones. Strategy beats raw power.",
+            target: "tactics-tab"
+        },
+        {
+            title: "The Energy Cycle",
+            desc: "PvE missions cost 20 Energy. It regenerates slowly (1 per min). Choose your battles wisely.",
+            target: "pve-tab"
+        },
+        {
+            title: "Ready for Battle",
+            desc: "Go to the Quests tab and face your first monster. May the Light (or shadows) guide you!",
+            target: "start-game"
+        }
+    ];
+
+    if (step <= 0 || step > steps.length || (step === 1 && !hero)) return null;
+    const current = steps[step - 1];
+
+    // Auto-advance some steps or hide based on context if needed
+    if (step === 1 && hero) {
+        // Already minted, move to stats
+        setTimeout(onNext, 100);
+        return null;
+    }
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center pointer-events-none p-6 pb-28">
+            <div className="w-full bg-slate-900 border border-amber-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(245,158,11,0.2)] pointer-events-auto animate-in fade-in slide-in-from-bottom-5 duration-500">
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-amber-500 font-black uppercase tracking-tighter text-sm flex items-center">
+                        <Info className="w-4 h-4 mr-2" />
+                        Tutorial: {current.title}
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-500">{step}/{steps.length}</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed font-bold">{current.desc}</p>
+                <button 
+                    onClick={onNext}
+                    className="mt-4 w-full bg-amber-500 text-black font-black uppercase py-3 rounded-lg text-xs hover:bg-amber-400 transition-colors flex items-center justify-center"
+                >
+                    {step === steps.length ? "Let's Go!" : "Understood"}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 const BODY_PARTS: BodyPart[] = ["Head", "Shoulders", "Torso", "Arms", "Legs"];
 
 const PART_META: Record<BodyPart, { damage: string; hit: string; mult: number; chance: number }> = {
@@ -126,6 +188,14 @@ export default function Home() {
   const [hero, setHero] = useState<Hero | null>(null);
   const [isMinting, setIsMinting] = useState(false);
   const [combat, setCombat] = useState<CombatState | null>(null);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  useEffect(() => {
+    // Show tutorial for new sessions if not connected/no hero
+    if (!connected && !isGuest) {
+        setTutorialStep(0);
+    }
+  }, [connected, isGuest]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -163,6 +233,7 @@ export default function Home() {
         defensePattern: Array(5).fill("Torso")
       });
       setIsMinting(false);
+      setTutorialStep(1); // Start tutorial after minting
     }, 1500);
   };
 
@@ -296,8 +367,9 @@ export default function Home() {
   if (!connected && !isGuest) return <LandingPage onGuest={() => setIsGuest(true)} />;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-slate-950 text-white selection:bg-amber-500">
+    <div className="max-w-md mx-auto min-h-screen bg-slate-950 text-white selection:bg-amber-500 overflow-x-hidden relative">
       <GlobalHUD hero={hero} publicKey={publicKey} isGuest={isGuest} />
+      <TutorialOverlay step={tutorialStep} onNext={() => setTutorialStep(s => s + 1)} hero={hero} />
       
       <div className="p-6 pb-36">
         {!combat ? (
@@ -330,8 +402,8 @@ export default function Home() {
 
 function LandingPage({ onGuest }: any) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[90vh] text-center p-8 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black">
-        <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-500 to-orange-800 tracking-tighter italic animate-pulse">SOLAREIGN</h1>
+      <div className="flex flex-col items-center justify-center min-h-[90vh] text-center p-8 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black overflow-hidden">
+        <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-500 to-orange-800 tracking-tighter italic animate-pulse px-4 break-words">SOLAREIGN</h1>
         <p className="text-slate-500 font-bold tracking-[0.4em] text-[10px] uppercase mt-4">Blockchain Tactical Redefined</p>
         <div className="mt-20 flex flex-col space-y-4">
             <WalletMultiButton style={{ backgroundColor: '#fff', color: '#000', fontWeight: '900', borderRadius: '12px', height: '56px' }} />
@@ -343,7 +415,7 @@ function LandingPage({ onGuest }: any) {
 
 function GlobalHUD({ hero, publicKey, isGuest }: any) {
     return (
-        <div className="sticky top-0 z-[100] bg-slate-950/90 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center px-6">
+        <div className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-white/5 p-4 flex justify-between items-center px-6">
             <div className="flex items-center space-x-3 text-left">
                 <div className="w-10 h-10 rounded-xl bg-slate-900 border border-white/10 overflow-hidden">
                    <img src={hero?.image || getAssetPath("assets/heroes/light1.png")} className={`w-full h-full object-cover ${!hero && 'opacity-10'}`} />
