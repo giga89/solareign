@@ -402,12 +402,42 @@ export default function Home() {
 
 function LandingPage({ onGuest }: any) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[90vh] text-center p-8 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 to-black overflow-hidden">
-        <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-500 to-orange-800 tracking-tighter italic animate-pulse px-4 break-words">SOLAREIGN</h1>
-        <p className="text-slate-500 font-bold tracking-[0.4em] text-[10px] uppercase mt-4">Blockchain Tactical Redefined</p>
-        <div className="mt-20 flex flex-col space-y-4">
-            <WalletMultiButton style={{ backgroundColor: '#fff', color: '#000', fontWeight: '900', borderRadius: '12px', height: '56px' }} />
-            <button onClick={onGuest} className="bg-slate-900 text-white font-black italic rounded-xl px-10 py-5 border border-white/10 hover:bg-slate-800 transition-all uppercase tracking-widest text-xs">Enter as Guest</button>
+      <div className="flex flex-col items-center justify-center min-h-screen text-center bg-black overflow-hidden relative">
+        {/* Background Glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900/20 via-black to-black z-0" />
+        
+        {/* Mobile Cover Art */}
+        <div className="relative z-10 w-full max-w-md flex flex-col items-center px-4">
+            <div className="relative w-full aspect-[9/12] rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(245,158,11,0.15)] mb-8">
+                <img 
+                    src={getAssetPath("assets/cover.png")} 
+                    alt="Solareign" 
+                    className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000"
+                />
+                <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            </div>
+
+            <p className="text-slate-500 font-bold tracking-[0.5em] text-[10px] uppercase mb-12">Blockchain Tactical Redefined</p>
+            
+            <div className="flex flex-col space-y-4 w-full px-8">
+                <WalletMultiButton style={{ 
+                    backgroundColor: '#fff', 
+                    color: '#000', 
+                    fontWeight: '900', 
+                    borderRadius: '16px', 
+                    height: '64px',
+                    width: '100%',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    textTransform: 'uppercase'
+                }} />
+                <button 
+                    onClick={onGuest} 
+                    className="bg-slate-900/50 backdrop-blur-md text-white font-black italic rounded-2xl px-10 py-5 border border-white/10 hover:bg-slate-800 transition-all uppercase tracking-widest text-xs"
+                >
+                    Enter as Guest
+                </button>
+            </div>
         </div>
       </div>
     );
