@@ -2,7 +2,7 @@
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   CopyPlus, ArrowRight, ShieldHalf, Flame, Swords, Map, Star, Zap, 
   Heart, Trophy, Coins, UserPlus, ShieldAlert, Target, Info, Medal,
@@ -627,11 +627,32 @@ function StatCard({ label, val, onUp, available }: any) {
 
 function PvEScreen({ hero, onStart, completedQuests }: any) {
     const [selectedLoc, setSelectedLoc] = useState<any>(null);
+    const mapRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (mapRef.current) {
+            // Target the center of active Region 1 (South)
+            // Region 1 bounds: X(18-50), Y(72-88)
+            const mapW = mapRef.current.scrollWidth;
+            const mapH = mapRef.current.scrollHeight;
+            const viewW = mapRef.current.clientWidth;
+            const viewH = mapRef.current.clientHeight;
+
+            // Centering around X=35% and Y=80% of the total map
+            mapRef.current.scrollLeft = (mapW * 0.35) - (viewW / 2);
+            mapRef.current.scrollTop = (mapH * 0.80) - (viewH / 2);
+        }
+    }, [mapRef]);
 
     if (!hero) return null;
 
     return (
         <div className="space-y-6 pt-4">
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+            
             <div className="flex justify-between items-center bg-slate-900/50 backdrop-blur-xl p-6 rounded-3xl border border-white/5 mx-2">
                 <div>
                   <h2 className="text-2xl font-black italic tracking-tighter">KINGDOM OF SOLAR</h2>
@@ -642,18 +663,15 @@ function PvEScreen({ hero, onStart, completedQuests }: any) {
                 </div>
             </div>            {/* Pannable Map Container */}
             <div className="relative aspect-square w-full rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-black group">
-                <div className="absolute inset-0 overflow-auto no-scrollbar cursor-grab active:cursor-grabbing" id="map-scroller">
-                    <div className="relative w-[200%] h-[200%]">
+                <div 
+                    ref={mapRef}
+                    className="absolute inset-0 overflow-auto no-scrollbar cursor-grab active:cursor-grabbing" 
+                    id="map-scroller"
+                >
+                    <div className="relative w-[180%] h-[180%]">
                         <img 
                             src={getAssetPath("assets/world_map.png")} 
                             className="w-full h-full object-cover opacity-80" 
-                            onLoad={() => {
-                                const scroller = document.getElementById('map-scroller');
-                                if (scroller) {
-                                    scroller.scrollTop = scroller.scrollHeight; // Focus bottom
-                                    scroller.scrollLeft = scroller.scrollWidth / 4; // Center horizontally
-                                }
-                            }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
                         
