@@ -574,35 +574,167 @@ function HeroScreen({ hero, onMint, isMinting, onUpgrade, onTactic }: any) {
                     </div>
                 </div>
             ) : (
-                <div className="space-y-6 text-left">
-                    {[0,1,2,3,4].map(round => (
-                        <div key={round} className="p-8 bg-slate-900 rounded-[2.5rem] border border-white/5 space-y-6 shadow-xl relative overflow-hidden">
-                            <span className="absolute right-8 top-8 text-4xl font-black text-white/5 italic">#{round+1}</span>
-                            <div className="space-y-6 relative z-10">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-rose-500/80 uppercase tracking-widest block">Round {round+1} Attack Focus</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {BODY_PARTS.map(p => (
-                                            <TacticBtn key={p} active={hero.attackPattern[round] === p} label={p} onClick={() => onTactic(round, "atk", p)} type="atk" />
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-blue-500/80 uppercase tracking-widest block">Round {round+1} Guard Zone</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {BODY_PARTS.map(p => (
-                                            <TacticBtn key={p} active={hero.defensePattern[round] === p} label={p} onClick={() => onTactic(round, "def", p)} type="def" />
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <TacticalDNAGrid
+                    hero={hero}
+                    onTactic={onTactic}
+                />
             )}
         </div>
     );
 }
+
+// --- Warrior Body SVG Zone Selector ---
+
+const ZONE_PATHS: Record<BodyPart, { d: string; label: string }> = {
+  Head:      { d: "M22 2 C16 2 12 7 12 13 C12 19 16 23 22 23 C28 23 32 19 32 13 C32 7 28 2 22 2 Z", label: "H" },
+  Shoulders: { d: "M4 26 C4 26 8 23 12 25 L14 30 L8 33 L4 29 Z M40 26 C40 26 36 23 32 25 L30 30 L36 33 L40 29 Z", label: "S" },
+  Torso:     { d: "M12 25 L14 30 L14 50 L30 50 L30 30 L32 25 C28 24 16 24 12 25 Z", label: "T" },
+  Arms:      { d: "M4 29 L8 33 L10 50 L10 58 L6 56 L4 42 Z M40 29 L36 33 L34 50 L34 58 L38 56 L40 42 Z", label: "A" },
+  Legs:      { d: "M14 50 L14 70 L20 70 L22 55 L24 70 L30 70 L30 50 Z", label: "L" },
+};
+
+function WarriorFigure({
+    attackZone,
+    defenseZone,
+    onSelectAtk,
+    onSelectDef,
+    roundNum,
+    mode,
+}: {
+    attackZone: BodyPart;
+    defenseZone: BodyPart;
+    onSelectAtk: (z: BodyPart) => void;
+    onSelectDef: (z: BodyPart) => void;
+    roundNum: number;
+    mode: "atk" | "def";
+}) {
+    const sameZone = attackZone === defenseZone;
+
+    return (
+        <div className="flex flex-col items-center gap-1.5">
+            {/* Round label — amber if attack=defense conflict */}
+            <span className={`text-[8px] font-black uppercase tracking-wider ${
+                sameZone ? "text-amber-400" : mode === "atk" ? "text-rose-400" : "text-blue-400"
+            }`}>{sameZone ? "⚡" : ""}R{roundNum}</span>
+            <svg viewBox="0 0 44 75" className="w-full drop-shadow-lg">
+                {Object.entries(ZONE_PATHS).map(([part, { d }]) => {
+                    const bp = part as BodyPart;
+                    const isAtk = attackZone === bp;
+                    const isDef = defenseZone === bp;
+                    const isBoth = isAtk && isDef; // same zone = conflict!
+                    const isActive = mode === "atk" ? isAtk : isDef;
+
+                    const fill = isBoth
+                        ? "rgba(217,119,6,0.9)"   // amber = conflict
+                        : isAtk
+                        ? "rgba(220,38,38,0.9)"
+                        : isDef
+                        ? "rgba(59,130,246,0.8)"
+                        : "rgba(30,41,59,0.85)";
+                    const stroke = isBoth
+                        ? "#fbbf24"
+                        : isActive
+                        ? mode === "atk" ? "#f87171" : "#93c5fd"
+                        : "rgba(255,255,255,0.06)";
+
+                    return (
+                        <path
+                            key={part}
+                            d={d}
+                            fill={fill}
+                            stroke={stroke}
+                            strokeWidth={isActive || isBoth ? "1.2" : "0.5"}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => mode === "atk" ? onSelectAtk(bp) : onSelectDef(bp)}
+                        />
+                    );
+                })}
+            </svg>
+            {/* zone indicators */}
+            <div className="flex flex-col gap-0.5 w-full">
+                <div className="flex items-center gap-1">
+                    <span className={`w-1 h-1 rounded-full flex-shrink-0 ${sameZone ? "bg-amber-400" : "bg-rose-500"}`} />
+                    <span className={`text-[5px] font-black uppercase truncate ${sameZone ? "text-amber-400" : "text-rose-400"}`}>{attackZone.slice(0,3)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                    <span className={`w-1 h-1 rounded-full flex-shrink-0 ${sameZone ? "bg-amber-400" : "bg-blue-500"}`} />
+                    <span className={`text-[5px] font-black uppercase truncate ${sameZone ? "text-amber-400" : "text-blue-400"}`}>{defenseZone.slice(0,3)}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TacticalDNAGrid({ hero, onTactic }: { hero: any; onTactic: (r: number, t: "atk" | "def", z: BodyPart) => void }) {
+    const [mode, setMode] = useState<"atk" | "def">("atk");
+
+    return (
+        <div className="space-y-5">
+            {/* Global mode toggle */}
+            <div className="flex rounded-2xl overflow-hidden border border-white/10 shadow-xl">
+                <button
+                    onClick={() => setMode("atk")}
+                    className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest transition-all ${mode === "atk" ? "bg-rose-600 text-white shadow-inner" : "bg-slate-900 text-slate-500"}`}
+                >
+                    ⚔️ Attack Zone
+                </button>
+                <button
+                    onClick={() => setMode("def")}
+                    className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest transition-all ${mode === "def" ? "bg-blue-600 text-white shadow-inner" : "bg-slate-900 text-slate-500"}`}
+                >
+                    🛡 Guard Zone
+                </button>
+            </div>
+
+            {/* 5-column warrior grid */}
+            <div className="bg-slate-900 rounded-3xl border border-white/5 p-4 shadow-2xl">
+                <div className="grid grid-cols-5 gap-2">
+                    {[0,1,2,3,4].map(round => (
+                        <WarriorFigure
+                            key={round}
+                            roundNum={round + 1}
+                            attackZone={hero.attackPattern[round]}
+                            defenseZone={hero.defensePattern[round]}
+                            onSelectAtk={(z) => onTactic(round, "atk", z)}
+                            onSelectDef={(z) => onTactic(round, "def", z)}
+                            mode={mode}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Legend */}
+            <div className="bg-slate-900/60 rounded-2xl border border-white/5 p-4 space-y-3">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Zone Stats</p>
+                <div className="space-y-1.5">
+                    {BODY_PARTS.map(bp => (
+                        <div key={bp} className="flex items-center justify-between">
+                            <span className="text-[9px] font-black text-white/70 uppercase w-20">{bp}</span>
+                            <div className="flex gap-3">
+                                <span className="text-[8px] font-bold text-slate-400">
+                                    🎯 {PART_META[bp].hit}
+                                </span>
+                                <span className={`text-[8px] font-black ${
+                                    PART_META[bp].mult >= 2 ? "text-rose-400" :
+                                    PART_META[bp].mult >= 1.5 ? "text-orange-400" :
+                                    PART_META[bp].mult >= 1 ? "text-amber-400" : "text-slate-500"
+                                }`}>×{PART_META[bp].mult} DMG</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {/* Same-zone hint */}
+                <div className="flex items-start gap-2 border-t border-white/5 pt-3">
+                    <span className="text-amber-400 text-[10px] flex-shrink-0">⚡</span>
+                    <p className="text-[8px] text-slate-500 font-bold leading-relaxed">
+                        Se attacco e difesa sono sulla <span className="text-amber-400">stessa zona</span> → la zona appare arancione. Efficace solo se l'avversario attacca lì.
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 function TacticBtn({ active, label, onClick, type }: any) {
     const activeS = type === "atk" ? "bg-rose-500 border-rose-400 text-black shadow-lg shadow-rose-500/20" : "bg-blue-500 border-blue-400 text-black shadow-lg shadow-blue-500/20";
