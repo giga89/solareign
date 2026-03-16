@@ -1,0 +1,2 @@
+[build]
+rustflags = ["--cfg", "proc_macro_span"]

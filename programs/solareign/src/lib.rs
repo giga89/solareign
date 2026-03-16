@@ -176,7 +176,7 @@ pub struct PvEMission<'info> {
         mut,
         seeds = [b"hero", user.key().as_ref()],
         bump,
-        has_one = owner,
+        constraint = hero.owner == user.key(),
     )]
     pub hero: Account<'info, Hero>,
     #[account(mut)]
@@ -189,7 +189,7 @@ pub struct AllocateAttributes<'info> {
         mut,
         seeds = [b"hero", user.key().as_ref()],
         bump,
-        has_one = owner,
+        constraint = hero.owner == user.key(),
     )]
     pub hero: Account<'info, Hero>,
     #[account(mut)]
@@ -202,7 +202,7 @@ pub struct PvPBattle<'info> {
         mut,
         seeds = [b"hero", user.key().as_ref()],
         bump,
-        has_one = owner,
+        constraint = attacker.owner == user.key(),
     )]
     pub attacker: Account<'info, Hero>,
     #[account(mut)] // Can be any other hero

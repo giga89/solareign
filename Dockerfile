@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y \
     bzip2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Solana CLI (Binary) via Agave v2.1.0
-RUN curl -L https://github.com/anza-xyz/agave/releases/download/v2.1.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2 -o solana.tar.bz2 && \
+# Install Solana CLI (Binary) via Agave v2.2.6 (ships with rustc >=1.82)
+RUN curl -L https://github.com/anza-xyz/agave/releases/download/v2.2.6/solana-release-x86_64-unknown-linux-gnu.tar.bz2 -o solana.tar.bz2 && \
     tar jxf solana.tar.bz2 && \
     mkdir -p /root/.local/share/solana/install/active_release && \
     mv solana-release/* /root/.local/share/solana/install/active_release/ && \
@@ -25,8 +25,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g yarn
 
-# Install Anchor CLI via NPM (Pre-built binary)
-RUN npm install -g @coral-xyz/anchor-cli@0.29.0
+# Install Anchor CLI via NPM (Pre-built binary) - 0.30.1 compatible with Solana 2.2.x
+RUN npm install -g @coral-xyz/anchor-cli@0.30.1
 
 WORKDIR /app
 
